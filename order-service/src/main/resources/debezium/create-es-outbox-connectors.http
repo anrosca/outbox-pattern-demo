@@ -1,0 +1,58 @@
+###
+POST http://localhost:8083/connectors
+Content-Type: application/json
+
+{
+  "name": "es-source-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "order-service-operational-db",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "order_db",
+    "database.server.name": "order_db",
+    "schema.whitelist": "public",
+    "table.whitelist": "public.purchase_orders,public.order_lines",
+    "plugin.name": "pgoutput",
+    "dialect.name": "PostgreSqlDatabaseDialect",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "transforms": "Reroute,unwrap",
+    "transforms.Reroute.type": "io.debezium.transforms.ByLogicalTableRouter",
+    "transforms.Reroute.topic.regex": "order_db\\.public\\.(.*)",
+    "transforms.Reroute.topic.replacement": "$1",
+    "delete.handling.mode": "rewrite",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "true",
+    "transforms.unwrap.on.delete": "false",
+    "slot.name" : "es_connector"
+  }
+}
+
+###
+###
+POST http://localhost:8083/connectors
+Content-Type: application/json
+
+{
+  "name": "es-sink-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+    "tasks.max": "1",
+    "topics": "purchase_orders,order_lines",
+    "connection.url": "http://elasticdbz:9200",
+    "transforms": "unwrap,key",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.key.field": "id",
+    "key.ignore": "false",
+    "type.name": "customer",
+    "behavior.on.null.values": "delete",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+  }
+}
+
+###
